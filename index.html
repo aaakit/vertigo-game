@@ -146,6 +146,9 @@ function cardActions(s,p,ci){
     else if(!p.mach.length)out.push({no:'קודם צריך מאך כדי להמריא'});
     else if(tot>2000&&p.mach.length<2)out.push({no:'מעל 2,000 פיט צריך שני מאך'});
     else out.push({k:'feet',label:'הנח אצלי: '+c.v+' פיט'});
+    // multiplier (Avraham, 23.11.2026): mach from the hand + feet = feet x2, the mach is discarded, draw 2
+    if(!stopped(p,'feet')&&p.mach.length&&p.hand.some(x=>x.t==='mach')&&!(alt(p)+2*c.v>2000&&p.mach.length<2))
+      out.push({k:'boost',label:'מכפיל: מאך מהיד + '+c.v+' = '+(2*c.v)+' פיט'});
     opp.filter(o=>o.haz.includes('vertigo')&&alt(o)>0).forEach(o=>out.push({k:'lower',to:o.id,label:'הנח על '+o.name+' (ורטיגו): −'+c.v}));
   }
   if(c.t==='mach'){
@@ -163,10 +166,10 @@ const anyLegal=(s,p)=>p.hand.some((c,i)=>cardActions(s,p,i).some(a=>a.k&&!a.soft
 function act(s,pid,a){
   if(s.status!=='play')return 'המשחק נגמר';
   const p=s.players[s.turn];if(p.id!==pid)return 'לא התור שלך';
-  if(a.k==='kamikaze'){
-    if(!a.cards||a.cards.length!==2)return 'בחרו שני קלפים';
-    for(const id of a.cards){const i=p.hand.findIndex(c=>c.id===id);if(i<0)return 'קלף לא נמצא';s.discard.push(p.hand.splice(i,1)[0])}
-    draw(s,p);s.last={seq:s.seq+1,by:p.id,k:'kamikaze'};s.log.unshift(p.name+' עשה/תה קמיקאזה: זרק/ה שניים, לקח/ה אחד.');return endTurn(s);
+  if(a.k==='kamikaze'){ // Avraham, 23.11.2026: throw the whole hand, take 5 new, lose one mach from the board
+    const lost=p.mach.length?1:0;s.discard.push(...p.hand);p.hand=[];if(lost)s.discard.push(p.mach.pop());
+    for(let i=0;i<5;i++)draw(s,p);s.last={seq:s.seq+1,by:p.id,k:'kamikaze'};
+    s.log.unshift('💥 '+p.name+' עשה/תה קמיקאזה: 5 קלפים חדשים'+(lost?', ואיבד/ה מאך ('+p.mach.length+'/2).':'.'));return endTurn(s);
   }
   const ci=p.hand.findIndex(c=>c.id===a.card);if(ci<0)return 'קלף לא נמצא';
   const ok=cardActions(s,p,ci).find(x=>x.k===a.k&&(x.to||null)===(a.to||null));if(!ok)return 'מהלך לא חוקי';
@@ -179,6 +182,10 @@ function act(s,pid,a){
     if(alt(p)>=s.target&&p.mach.length>=2){s.status='over';s.winner=p.id;s.endWhy=p.name+' הגיע/ה ראשון/ה ל-'+fmt(s.target)+' פיט ו-2 מאך.';s.log.unshift('🏁 '+s.endWhy);s.seq++;return null}}
   else if(a.k==='haz'){o.haz.push(c.t);s.log.unshift(p.name+' נתן/ה ל'+o.name+': '+TYPES[c.t].name+'.')}
   else if(a.k==='fix'){p.haz=p.haz.filter(h=>h!==TYPES[c.t].solves);s.discard.push(c);s.log.unshift(p.name+' פתר/ה '+TYPES[TYPES[c.t].solves].name+'.')}
+  else if(a.k==='boost'){const mi=p.hand.findIndex(x=>x.t==='mach');s.discard.push(p.hand.splice(mi,1)[0]);p.feet.push({c,eff:2*c.v});
+    s.log.unshift('⚡ '+p.name+' הכפיל/ה: '+c.v+'×2 = '+(2*c.v)+' פיט. סה"כ '+fmt(alt(p))+'.');
+    if(alt(p)>=s.target&&p.mach.length>=2){s.status='over';s.winner=p.id;s.endWhy=p.name+' הגיע/ה ראשון/ה ל-'+fmt(s.target)+' פיט ו-2 מאך.';s.log.unshift('🏁 '+s.endWhy);s.seq++;return null}
+    draw(s,p);}
   else if(a.k==='swap'){s.discard.push(c);s.log.unshift(p.name+' החליף/ה קלף.')}
   if(a.k==='haz'||a.k==='lower')s.discard.push(c); // GAP: hazards and lowering cards go to the discard pile (kept as a marker on the player)
   draw(s,p);return endTurn(s);
@@ -201,9 +208,12 @@ function beginTurn(s){
 function botPick(s){
   const p=s.players[s.turn],opts=[];
   p.hand.forEach((c,i)=>cardActions(s,p,i).forEach(a=>{if(a.k&&!a.soft)opts.push({k:a.k,to:a.to||null,card:c.id})}));
+  const machInHand=p.hand.filter(c=>c.t==='mach').length,need=Math.max(0,2-p.mach.length);
+  if(machInHand>need){const b=opts.filter(x=>x.k==='boost').sort((a,b)=>p.hand.find(c=>c.id===b.card).v-p.hand.find(c=>c.id===a.card).v);if(b.length)return b[0]}
   const order=['fix','mach','feet','lower','haz'];
   for(const k of order){const o=opts.filter(x=>x.k===k);if(o.length)return k==='feet'?o.sort((a,b)=>p.hand.find(c=>c.id===b.card).v-p.hand.find(c=>c.id===a.card).v)[0]:o[rnd(o.length)]}
   if(!p.hand.length)return null;
+  if(p.haz.length&&!p.hand.some(c=>TYPES[c.t].solves&&p.haz.includes(TYPES[c.t].solves)))return {k:'kamikaze'};
   const sw=p.hand.findIndex(c=>c.t!=='mach'&&!TYPES[c.t].solves);return {k:'swap',card:p.hand[sw>=0?sw:0].id};
 }
 
@@ -298,7 +308,7 @@ function rulesHTML(){
     <section><div><h3>המטרה</h3><p>להגיע ראשון ל-${fmt(V.game?V.game.target:V.target)} פיט ו-2 מאך. כל שחקן מניח לפניו את הקלפים שצבר.</p></div></section>
     <section><div><h3>הקלפים (77)</h3><table class="ctab"><tr><th>קלף</th><th>כמה</th><th>מה עושה</th></tr>
       <tr><td>פיט 50–500</td><td>35</td><td>מעלה אותך בגובה</td></tr>
-      <tr><td>מאך</td><td>10</td><td>מהירות. צריך 1 להמראה, 2 לנצחון</td></tr>
+      <tr><td>מאך</td><td>10</td><td>מהירות. צריך 1 להמראה, 2 לנצחון. או מכפיל לפיט</td></tr>
       <tr><td>אזל הדלק</td><td>5</td><td>ליריב: לא יכול להניח מאך</td></tr>
       <tr><td>קרח על הכנפיים</td><td>5</td><td>ליריב: לא יכול להניח פיט</td></tr>
       <tr><td>ורטיגו</td><td>6</td><td>ליריב: כולם יכולים להוריד לו פיט</td></tr>
@@ -312,6 +322,8 @@ function rulesHTML(){
       <li>לפתור תקלה שיש עליך: מטוס תדלוק, אנטי-אייס, מד אופק.</li></ul><p class="muted">אחרי כל מהלך לוקחים קלף מהקופה.</p></div></section>
     <section><div><h3>ורטיגו</h3><p>כל עוד יריב בורטיגו, שאר השחקנים בתורם יכולים להניח קלפי פיט <b>על הערימה שלו</b>, וכל קלף כזה מוריד לו פיט. יוצאים עם מד אופק.</p></div></section>
     <section><div><h3>החלפת קלפים (שונה 23.11)</h3><p>אין קלף טוב? בכל שלב אפשר להחליף <b>כל קלף</b> בקלף מהקופה. זה התור שלך. (במקום החלפת פיט וקמיקאזה, כמו בגרסה של שושי.)</p></div></section>
+    <section><div><h3>מכפיל (חדש 23.11)</h3><p>כבר באוויר (מאך אחד לפחות על השולחן)? מניחים <b>מאך מהיד יחד עם קלף פיט</b>, והפיט שווה <b>פי 2</b>. המאך נזרק, ולוקחים 2 קלפים.</p></div></section>
+    <section><div><h3>קמיקאזה (חדש 23.11)</h3><p>בתור שלך: זורקים את <b>כל היד</b> ולוקחים 5 קלפים חדשים. המחיר: <b>מאבדים מאך אחד</b> מהשולחן. (אין מאך? לא מאבדים כלום.)</p></div></section>
     <section><div><h3>מפסידים</h3><p>מי שקורקע בשלוש תקלות בלי פתרון. מי שנשאר אחרון באוויר מנצח.</p></div></section>
     <section><div><h3>מה השלמתי (לא כתוב בחוקים)</h3><ul class="muted"><li>קרח ואנטי-אייס במקום "מנוע בוער" ו"מטוס ממריא", כמו בסט שהודפס.</li><li>יעד לבחירה. 4,000 כתוב בחוקים, אבל בכל החבילה יש 6,600 פיט.</li><li>כשהקופה נגמרת, מערבבים את הזרוקים.</li><li>אפשר לשחק גם בשניים.</li></ul></div></section>
     <button class="go" id="gclose2" style="width:100%">סגור</button></div></div>`;
@@ -392,7 +404,7 @@ function renderGame(){
       if(!canPlay)tip='אין קלף שאפשר להניח. לחץ/י על קלף שלא צריך ובחר/י "החלף בקלף מהקופה".';
       else if(!me.mach.length)tip=me.haz.includes('fuel')?'אזל לך הדלק: קודם מטוס תדלוק, ואז מאך.':'קודם מאך כדי להמריא. אין מאך? החלף/י קלף בקלף מהקופה.';
       else tip='קלף שמואר אפשר לשחק עכשיו. לחץ/י עליו.';
-      actions=`<span class="tipline">${esc(tip)}</span>`;}
+      actions=`<span class="tipline">${esc(tip)}</span><button id="kami">💥 קמיקאזה: 5 קלפים חדשים${me.mach.length?', מאבדים מאך':''}</button>`;}
   }
   const others=g.players.filter(p=>p.id!==myId()).map((p,i)=>board(g,p,false,i)).join('');
   const over=g.status==='over'?`<div class="box banner"><h2>${g.winner?esc(nameOf(g,g.winner))+' ניצח/ה':'אין מנצח'}</h2><p>${esc(g.endWhy)}</p><div class="row" style="justify-content:center">${V.mode!=='online'||(V.room&&V.room.host===ME)?'<button class="go" id="again">עוד משחק</button>':''}<button id="home">לתפריט</button></div></div>`:'';
@@ -432,7 +444,7 @@ function bind(){
   on('ready',()=>{V.passTo=null;render()});
   on('again',()=>{resetView();if(V.mode==='bot')startBot();else if(V.mode==='local')startLocal(V.game.players.map(p=>p.name));else{const g=startGame(V.room.players,V.room.target||V.target);V.game=g;writeGame(g)}});
   on('mute',()=>{V.muted=!V.muted;LS.set('vtg_mute',V.muted?'1':'0');render()});
-  on('kami',()=>{V.kamiOn=true;V.kami=[];V.sel=null;render()});on('kcancel',()=>{V.kamiOn=false;V.kami=[];render()});on('kgo',()=>doAction({k:'kamikaze',cards:V.kami.slice()}));
+  on('kami',()=>doAction({k:'kamikaze'}));on('kcancel',()=>{V.kamiOn=false;V.kami=[];render()});on('kgo',()=>doAction({k:'kamikaze',cards:V.kami.slice()}));
   document.querySelectorAll('.hand [data-card]').forEach(el=>el.onclick=()=>{const id=+el.dataset.card;V.err='';
     if(V.kamiOn){V.kami=V.kami.includes(id)?V.kami.filter(x=>x!==id):V.kami.length<2?[...V.kami,id]:V.kami;return render()}
     V.sel=V.sel===id?null:id;render()});
