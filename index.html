@@ -164,13 +164,15 @@ function cardActions(s,p,ci){
 }
 const anyLegal=(s,p)=>p.hand.some((c,i)=>cardActions(s,p,i).some(a=>a.k&&!a.soft));
 
+const KAMI_MIN=100,KAMI_COST=250;
 function act(s,pid,a){
   if(s.status!=='play')return 'המשחק נגמר';
   const p=s.players[s.turn];if(p.id!==pid)return 'לא התור שלך';
-  if(a.k==='kamikaze'){ // Avraham, 23.11.2026: throw the whole hand, take 5 new, lose one mach from the board
-    const lost=p.mach.length?1:0;s.discard.push(...p.hand);p.hand=[];if(lost)s.discard.push(p.mach.pop());
+  if(a.k==='kamikaze'){ // Avraham, 23.11.2026: from 100 ft up; throw the whole hand, take 5 new, lose 250 ft
+    if(alt(p)<KAMI_MIN)return 'קמיקאזה רק מ-'+KAMI_MIN+' פיט';
+    const lost=Math.min(KAMI_COST,alt(p));s.discard.push(...p.hand);p.hand=[];p.feet.push({c:null,eff:-lost});
     for(let i=0;i<5;i++)draw(s,p);s.last={seq:s.seq+1,by:p.id,k:'kamikaze'};
-    s.log.unshift('💥 '+p.name+' עשה/תה קמיקאזה: 5 קלפים חדשים'+(lost?', ואיבד/ה מאך ('+p.mach.length+'/2).':'.'));return endTurn(s);
+    s.log.unshift('💥 '+p.name+' עשה/תה קמיקאזה: 5 קלפים חדשים, −'+lost+' פיט. סה"כ '+fmt(alt(p))+'.');return endTurn(s);
   }
   if(a.k==='boostm'){const m=p.hand.find(c=>c.id===a.card);if(!m||m.t!=='mach')return 'קלף לא נמצא';a={k:'boost',card:a.feet}} // multiplier chosen from the mach card
   const ci=p.hand.findIndex(c=>c.id===a.card);if(ci<0)return 'קלף לא נמצא';
@@ -215,7 +217,7 @@ function botPick(s){
   const order=['fix','mach','feet','lower','haz'];
   for(const k of order){const o=opts.filter(x=>x.k===k);if(o.length)return k==='feet'?o.sort((a,b)=>p.hand.find(c=>c.id===b.card).v-p.hand.find(c=>c.id===a.card).v)[0]:o[rnd(o.length)]}
   if(!p.hand.length)return null;
-  if(p.haz.length&&!p.hand.some(c=>TYPES[c.t].solves&&p.haz.includes(TYPES[c.t].solves)))return {k:'kamikaze'};
+  if(alt(p)>=KAMI_MIN&&p.haz.length&&!p.hand.some(c=>TYPES[c.t].solves&&p.haz.includes(TYPES[c.t].solves)))return {k:'kamikaze'};
   const sw=p.hand.findIndex(c=>c.t!=='mach'&&!TYPES[c.t].solves);return {k:'swap',card:p.hand[sw>=0?sw:0].id};
 }
 
@@ -334,7 +336,7 @@ function rulesHTML(){
     <section><div><h3>ורטיגו</h3><p>כל עוד יריב בורטיגו, שאר השחקנים בתורם יכולים להניח קלפי פיט <b>על הערימה שלו</b>, וכל קלף כזה מוריד לו פיט. יוצאים עם מד אופק.</p></div></section>
     <section><div><h3>החלפת קלפים (שונה 23.11)</h3><p>אין קלף טוב? בכל שלב אפשר להחליף <b>כל קלף</b> בקלף מהקופה. זה התור שלך. (במקום החלפת פיט וקמיקאזה, כמו בגרסה של שושי.)</p></div></section>
     <section><div><h3>מכפיל (חדש 23.11)</h3><p>כבר באוויר (מאך אחד לפחות על השולחן)? מניחים <b>מאך מהיד יחד עם קלף פיט</b>, והפיט שווה <b>פי 2</b>. המאך נזרק, ולוקחים 2 קלפים.</p></div></section>
-    <section><div><h3>קמיקאזה (חדש 23.11)</h3><p>בתור שלך: זורקים את <b>כל היד</b> ולוקחים 5 קלפים חדשים. המחיר: <b>מאבדים מאך אחד</b> מהשולחן. (אין מאך? לא מאבדים כלום.)</p></div></section>
+    <section><div><h3>קמיקאזה (חדש 23.11)</h3><p>רק מ-100 פיט ומעלה. בתור שלך: זורקים את <b>כל היד</b> ולוקחים 5 קלפים חדשים. המחיר: <b>מאבדים 250 פיט</b> (עם פחות מ-250 יורדים ל-0).</p></div></section>
     <section><div><h3>מפסידים</h3><p>מי שקורקע בשלוש תקלות בלי פתרון. מי שנשאר אחרון באוויר מנצח.</p></div></section>
     <section><div><h3>מה השלמתי (לא כתוב בחוקים)</h3><ul class="muted"><li>קרח ואנטי-אייס במקום "מנוע בוער" ו"מטוס ממריא", כמו בסט שהודפס.</li><li>יעד לבחירה. 4,000 כתוב בחוקים, אבל בכל החבילה יש 6,600 פיט.</li><li>כשהקופה נגמרת, מערבבים את הזרוקים.</li><li>אפשר לשחק גם בשניים.</li></ul></div></section>
     <button class="go" id="gclose2" style="width:100%">סגור</button></div></div>`;
@@ -414,11 +416,11 @@ function renderGame(){
       let tip;
       const HT={fuel:me.mach.length?'הדלק אוזל: אין מאך חדש עד מטוס תדלוק. פיט אפשר.':'הדלק אוזל ואין מאך: אי אפשר להמריא עד מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
       const hz=me.haz.map(x=>HT[x]).filter(Boolean),hasFix=me.hand.some(c=>TYPES[c.t].solves&&me.haz.includes(TYPES[c.t].solves));
-      if(hz.length)tip=hz.join(' ')+(hasFix?'':' אין? החלף קלף או קמיקאזה.');
-      else if(!canPlay)tip='אין מהלך: החלף קלף או קמיקאזה.';
+      if(hz.length)tip=hz.join(' ')+(hasFix?'':(alt(me)>=KAMI_MIN?' אין? החלף קלף או קמיקאזה.':' אין? החלף קלף.'));
+      else if(!canPlay)tip=alt(me)>=KAMI_MIN?'אין מהלך: החלף קלף או קמיקאזה.':'אין מהלך: החלף קלף.';
       else if(!me.mach.length)tip='קודם מאך כדי להמריא.';
       else tip='בחר קלף.';
-      actions=`<span class="tipline">${esc(tip)}</span><button id="kami">💥 קמיקאזה: 5 קלפים חדשים${me.mach.length?', מאבדים מאך':''}</button>`;}
+      actions=`<span class="tipline">${esc(tip)}</span>${alt(me)>=KAMI_MIN?'<button id="kami">💥 קמיקאזה: 5 קלפים חדשים, −250 פיט</button>':''}`;}
   }
   const others=g.players.filter(p=>p.id!==myId()).map((p,i)=>board(g,p,false,i)).join('');
   const over=g.status==='over'?`<div class="box banner"><h2>${g.winner?esc(nameOf(g,g.winner))+' ניצח/ה':'אין מנצח'}</h2><p>${esc(g.endWhy)}</p><div class="row" style="justify-content:center">${V.mode!=='online'||(V.room&&V.room.host===ME)?'<button class="go" id="again">עוד משחק</button>':''}<button id="home">לתפריט</button></div></div>`:'';
