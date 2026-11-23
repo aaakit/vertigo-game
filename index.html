@@ -121,6 +121,15 @@ input,select{font:inherit;background:#0c241b;color:var(--ink);border:1px solid v
 .lane{background:none;padding:3px 8px}
 .lane .lhaz{border:none;padding:0}
 .lane .ceil{font-size:11px;color:var(--glow);white-space:nowrap}
+.board{padding:8px 10px;gap:4px}
+.bh{align-items:baseline}.bh .alt2{font:800 18px var(--digits);color:var(--glow);margin-inline-start:auto}.bh .alt2 small{font-size:10px;color:var(--dim)}.bh .muted{font-size:12px}
+.rows{display:flex;flex-direction:column;--mw:44px}
+.rows .mini-card{width:var(--mw)}
+.r1,.r2{display:flex;justify-content:space-between;align-items:flex-end;min-height:calc(var(--mw)*1.53)}
+.r2{margin-top:calc(var(--mw)*-0.38);position:relative;z-index:1;padding-inline-start:14px}
+.r1.blk>.stk:first-child>.mini-card,.r2.blk>.stk:first-child>.mini-card{filter:grayscale(.8) brightness(.55)}
+.tipline{font-size:13px;padding:4px 10px}
+@media (max-width:560px){.rows{--mw:36px}.wrap{gap:8px}.table{gap:6px}}
 .card.dim>*:not(.ctag){filter:grayscale(.85) brightness(.55)}.ctag{position:absolute;left:0;right:0;bottom:0;z-index:3;font-size:11px;line-height:1.25;font-weight:800;padding:3px 2px;text-align:center;background:rgba(0,0,0,.8)}.ctag.ok{color:#7be3a4}.ctag.no{color:#ff9a9d}
 </style>
 </head><body><div class="wrap" id="app"></div>
@@ -325,7 +334,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const $=s=>document.querySelector(s);
 function img(c){return c.t==='feet'?'feet'+c.v:TYPES[c.t].img}
 // "can I play this card?" label on each card in the hand (Avraham, 23.11.2026)
-const SHORT=[[/^אין עליך/,'אין תקלה'],[/צריך מאך/,'צריך מאך'],[/קרח/,'קרח'],[/שני מאך/,'צריך 2 מאך'],[/כבר יש לך 2/,'יש 2 מאך'],[/הדלק/,'דלק אוזל'],[/כבר עם/,'כבר יש לו']];
+const SHORT=[[/כבר עם/,'כבר יש לו'],[/^אין עליך/,'אין תקלה'],[/צריך מאך/,'צריך מאך'],[/קרח/,'קרח'],[/שני מאך/,'צריך 2 מאך'],[/כבר יש לך 2/,'יש 2 מאך'],[/הדלק/,'דלק אוזל'],[/כבר עם/,'כבר יש לו']];
 function cardTag(g,p,ci){
   const acts=cardActions(g,p,ci);
   if(acts.some(a=>a.k&&!a.soft))return '';
@@ -426,12 +435,11 @@ function board(g,p,mine,i){
   const mach=p.mach.map(()=>mc(IMG.mach,'','','מאך')).join('');
   const feet=p.feet.map(f=>f.eff<0?mc(f.c?IMG[img(f.c)]:'','neg','−'+Math.abs(f.eff),''):mc(IMG[img(f.c)],'',f.eff,'')).join('');
   return `<div class="board ${mine?'mine':''} ${p.id===cur.id&&g.status==='play'?'turn':''} ${p.out?'out':''}" data-pid="${esc(p.id)}">
-    <div class="bh"><b>${esc(p.name)}</b><span class="muted">${p.out?esc(p.why):p.hand.length+' קלפים ביד'}</span></div>
-    <div class="lanes">
-      <div class="lane ${fuel?'blk':''}"><span class="ln">מהירות</span><div class="stk">${mach||'<span class="empty-t">אין מאך</span>'}</div><span class="ceil">${ceil}</span><div class="lhaz stk">${hz(['fuel'])}</div></div>
-      <div class="lane ${ice?'blk':vtg?'vtg':''}"><span class="ln">גובה</span><div class="stk">${feet||'<span class="empty-t">0</span>'}</div><div class="tot"><b>${fmt(tot)}</b><small>/ ${fmt(g.target)}</small></div><div class="lhaz stk">${hz(['ice','vertigo'])}</div></div>
+    <div class="bh"><b>${esc(p.name)}</b><span class="alt2">${fmt(tot)}<small> / ${fmt(g.target)}</small></span><span class="muted">${p.out?esc(p.why):ceil+' · '+p.hand.length+' ביד'}</span></div>
+    <div class="rows">
+      <div class="r1 ${fuel?'blk':''}"><div class="stk">${mach||'<span class="empty-t">בלי מאך</span>'}</div><div class="stk">${hz(['fuel'])}</div></div>
+      <div class="r2 ${ice?'blk':''}"><div class="stk">${feet}</div><div class="stk">${hz(['ice','vertigo'])}</div></div>
     </div>
-    <div class="pbar"><i style="width:${Math.min(100,tot/g.target*100)}%"></i></div>
   </div>`;
 }
 function renderGame(){
@@ -447,13 +455,13 @@ function renderGame(){
       actions=al.map((a,i)=>a.k==='boost'||a.k==='boostm'?'':a.k?`<button class="${a.soft?'':'go'}" data-act="${i}">${esc(a.label)}</button>`:real?'':`<span class="why">${esc(a.no)}</span>`).join('')+(hasB?`<span class="note">⚡ סמן גם ${me.hand[ci].t==='mach'?'פיט':'מאך'} להכפלה</span>`:'')}}
     else{const canPlay=anyLegal(g,me),canSwap=true;
       let tip;
-      const HT={fuel:me.mach.length?'הדלק אוזל: אין מאך חדש עד מטוס תדלוק. פיט אפשר.':'הדלק אוזל ואין מאך: אי אפשר להמריא עד מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
+      const HT={fuel:me.mach.length?'הדלק אוזל: צריך מטוס תדלוק.':'הדלק אוזל: צריך מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
       const hz=me.haz.map(x=>HT[x]).filter(Boolean),hasFix=me.hand.some(c=>TYPES[c.t].solves&&me.haz.includes(TYPES[c.t].solves));
-      if(hz.length)tip=hz.join(' ')+(hasFix?'':' אין? החלף קלף או קמיקאזה.');
+      if(hz.length)tip=hz.join(' ')+(hasFix?'':' אין? החלף קלף.');
       else if(!canPlay)tip='אין מהלך: החלף קלף או קמיקאזה.';
       else if(!me.mach.length)tip='קודם מאך כדי להמריא.';
       else tip='בחר קלף.';
-      actions=`<span class="tipline">${esc(tip)}</span>${me.hand.length>=2?'<button id="kami">💥 קמיקאזה: יד חדשה, קלף אחד פחות</button>':''}`;}
+      actions=`<span class="tipline">${esc(tip)}</span>${me.hand.length>=2?'<button id="kami" title="יד חדשה, קלף אחד פחות">💥 קמיקאזה</button>':''}`;}
   }
   const others=g.players.filter(p=>p.id!==myId()).map((p,i)=>board(g,p,false,i)).join('');
   const over=g.status==='over'?`<div class="box banner"><h2>${g.winner?esc(nameOf(g,g.winner))+' ניצח/ה':'אין מנצח'}</h2><p>${esc(g.endWhy)}</p><div class="row" style="justify-content:center">${V.mode!=='online'||(V.room&&V.room.host===ME)?'<button class="go" id="again">עוד משחק</button>':''}<button id="home">לתפריט</button></div></div>`:'';
