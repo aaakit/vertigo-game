@@ -329,9 +329,9 @@ function renderHome(){
     <div class="row" style="justify-content:center;margin-top:8px"><button class="go" id="bot">שחק נגד המחשב</button><button id="rules">החוקים</button></div></div>
   <div class="box row"><label for="nm">השם שלך</label><input id="nm" value="${esc(myName)}" maxlength="14" placeholder="למשל: אריה" style="flex:1">${targetSel('tsel')}</div>
   <div class="home-grid">
-    <div class="box"><h3>משחק ברשת</h3><button class="go" id="create" ${V.busy?'disabled':''}>פתח משחק</button></div>
+${V.noDb?'':`    <div class="box"><h3>משחק ברשת</h3><button class="go" id="create" ${V.busy?'disabled':''}>פתח משחק</button></div>
     <div class="box"><h3>הצטרפות עם קוד</h3><input id="jcode" maxlength="4" placeholder="ABCD" autocomplete="off" style="font-family:var(--digits);letter-spacing:.3em;text-transform:uppercase;text-align:center"><button id="join" ${V.busy?'disabled':''}>הצטרף</button></div>
-    <div class="box"><h3>על טלפון אחד</h3><input id="lnames" placeholder="אברהם, אריה" value="${esc(LS.get('vtg_local')||'')}"><button id="local">התחל</button></div>
+`}    <div class="box"><h3>על טלפון אחד</h3><input id="lnames" placeholder="אברהם, אריה" value="${esc(LS.get('vtg_local')||'')}"><button id="local">התחל</button></div>
   </div>
   ${V.noDb?'<p class="note muted" style="text-align:center">בכתובת הזו אפשר לשחק נגד המחשב או על טלפון אחד.</p>':''}
   ${V.err?`<p style="color:var(--hazard);text-align:center">${esc(V.err)}</p>`:''}`;
