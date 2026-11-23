@@ -459,7 +459,7 @@ function renderGame(){
        <div class="turnmsg">${g.status==='over'?'':myTurn?'<strong>התור שלך</strong>':'התור של <strong>'+esc(cur.name)+'</strong>'}</div></div>
      ${me?board(g,me,true):''}
    </div>
-   ${me&&!me.out?`<div class="handbar"><div class="actions">${actions}</div><div class="hand">${me.hand.map((c,ci)=>withTag(cardHTML(c,((V.sel===c.id||V.sel2===c.id||V.kami.includes(c.id))?'sel ':'')+(myTurn&&!V.kamiOn&&!cardActions(g,me,ci).some(a=>a.k&&!a.soft)?'dim':'')),myTurn?cardTag(g,me,ci):'')).join('')}</div></div>`:''}
+   ${me&&!me.out?`<div class="handbar"><div class="actions">${actions}</div><div class="hand">${me.hand.map((c,ci)=>withTag(cardHTML(c,((V.sel===c.id||V.sel2===c.id||V.kami.includes(c.id))?'sel ':'')+(g.status==='play'&&!V.kamiOn&&!cardActions(g,me,ci).some(a=>a.k&&!a.soft)?'dim':'')),g.status==='play'?cardTag(g,me,ci):'')).join('')}</div></div>`:''}
    ${V.err?`<p style="color:var(--hazard);text-align:center">${esc(V.err)}</p>`:''}
    <div class="box log">${g.log.slice(0,15).map(l=>`<div>${esc(l)}</div>`).join('')}</div>`;
 }
