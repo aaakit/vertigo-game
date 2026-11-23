@@ -97,7 +97,13 @@ input,select{font:inherit;background:#0c241b;color:var(--ink);border:1px solid v
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .ctab{width:100%;border-collapse:collapse;font-size:14px}.ctab th,.ctab td{border-bottom:1px solid var(--rim);padding:5px 4px;text-align:right}.ctab th{color:var(--glow)}
-.tipline{font-size:14px;background:rgba(255,207,107,.12);border:1px solid rgba(255,207,107,.45);border-radius:10px;padding:6px 10px;text-align:center}.card.dim>*:not(.ctag){filter:grayscale(.85) brightness(.55)}.ctag{position:absolute;left:0;right:0;bottom:0;z-index:3;font-size:11px;line-height:1.25;font-weight:800;padding:3px 2px;text-align:center;background:rgba(0,0,0,.8)}.ctag.ok{color:#7be3a4}.ctag.no{color:#ff9a9d}
+.tipline{font-size:14px;background:rgba(255,207,107,.12);border:1px solid rgba(255,207,107,.45);border-radius:10px;padding:6px 10px;text-align:center}.slot.blk{outline:2px solid var(--hazard);outline-offset:3px;border-radius:10px;position:relative}
+.slot.vtg{outline:2px dashed #b48cff;outline-offset:3px;border-radius:10px;position:relative}
+.slot.blk::after,.slot.vtg::after{content:attr(data-blk);position:absolute;top:-11px;inset-inline-start:6px;z-index:2;color:#fff;font-size:10px;font-weight:800;padding:1px 6px;border-radius:8px;white-space:nowrap;background:var(--hazard)}
+.slot.vtg::after{background:#7a4fd0}
+.slot.blk .mini-empty,.slot.blk .fc,.slot.blk .mini-card{opacity:.55}
+.ceil{display:block;font-size:10px;color:var(--glow);font-weight:700}
+.card.dim>*:not(.ctag){filter:grayscale(.85) brightness(.55)}.ctag{position:absolute;left:0;right:0;bottom:0;z-index:3;font-size:11px;line-height:1.25;font-weight:800;padding:3px 2px;text-align:center;background:rgba(0,0,0,.8)}.ctag.ok{color:#7be3a4}.ctag.no{color:#ff9a9d}
 </style>
 </head><body><div class="wrap" id="app"></div>
 <script>
@@ -395,12 +401,15 @@ function renderRoom(){
 }
 function board(g,p,mine,i){
   const cur=g.players[g.turn],tot=alt(p);
+  const fuel=p.haz.includes('fuel'),ice=p.haz.includes('ice'),vtg=p.haz.includes('vertigo');
+  const ceil=!p.mach.length?'על הקרקע':p.mach.length===1?'תקרה 2,000':'בלי תקרה';
+  const fTag=[ice?'❄ קרח: אין פיט':'',vtg?'⬇ ורטיגו':''].filter(Boolean).join(' · ');
   const feet=p.feet.map(f=>`<div class="fc ${f.eff<0?'neg':''}">${f.eff<0?'−':''}${Math.abs(f.eff)}</div>`).join('');
   return `<div class="board ${mine?'mine':''} ${p.id===cur.id&&g.status==='play'?'turn':''} ${p.out?'out':''}" data-pid="${esc(p.id)}">
     <div class="bh"><b>${esc(p.name)}</b><span class="muted">${p.out?esc(p.why):p.hand.length+' קלפים ביד'}</span></div>
     <div class="brow">
-      <div class="slot mach">${[0,1].map(k=>p.mach[k]?`<div class="mini-card" style="--c:#9b5cf0"><img src="${IMG.mach}" alt=""><span>מאך</span></div>`:'<div class="mini-empty">מאך</div>').join('')}</div>
-      <div class="slot feet"><div class="fstack">${feet||'<div class="mini-empty wide">פיט</div>'}</div><div class="tot"><b>${fmt(tot)}</b><small>/ ${fmt(g.target)}</small></div></div>
+      <div class="slot mach ${fuel?'blk':''}" data-blk="⛽ הדלק אוזל: אין מאך">${[0,1].map(k=>p.mach[k]?`<div class="mini-card" style="--c:#9b5cf0"><img src="${IMG.mach}" alt=""><span>מאך</span></div>`:`<div class="mini-empty">${k?'מאך 2<br>מעל 2,000':'מאך 1<br>המראה'}</div>`).join('')}</div>
+      <div class="slot feet ${ice?'blk':vtg?'vtg':''}" data-blk="${fTag}"><div class="fstack">${feet||`<div class="mini-empty wide">${p.mach.length?'פיט':'פיט אחרי המראה'}</div>`}</div><div class="tot"><b>${fmt(tot)}</b><small>/ ${fmt(g.target)}</small><span class="ceil">${ceil}</span></div></div>
       <div class="slot haz">${p.haz.map(h=>`<div class="mini-card hz" style="--c:#e5484d"><img src="${IMG[TYPES[h].img]}" alt=""><span>${TYPES[h].name}</span></div>`).join('')}</div>
     </div>
     <div class="pbar"><i style="width:${Math.min(100,tot/g.target*100)}%"></i></div>
