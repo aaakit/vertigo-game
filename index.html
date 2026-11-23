@@ -147,7 +147,7 @@ function cardActions(s,p,ci){
     else if(tot>2000&&p.mach.length<2)out.push({no:'מעל 2,000 פיט צריך שני מאך'});
     else out.push({k:'feet',label:'הנח אצלי: '+c.v+' פיט'});
     // multiplier (Avraham, 23.11.2026): mach from the hand + feet = feet x2, the mach is discarded, draw 2
-    if(!stopped(p,'feet')&&p.mach.length&&p.hand.some(x=>x.t==='mach')&&!(alt(p)+2*c.v>2000&&p.mach.length<2))
+    if(!stopped(p,'feet')&&!stopped(p,'mach')&&p.mach.length&&p.hand.some(x=>x.t==='mach')&&!(alt(p)+2*c.v>2000&&p.mach.length<2))
       out.push({k:'boost',label:'מכפיל: מאך מהיד + '+c.v+' = '+(2*c.v)+' פיט'});
     opp.filter(o=>o.haz.includes('vertigo')&&alt(o)>0).forEach(o=>out.push({k:'lower',to:o.id,label:'הנח על '+o.name+' (ורטיגו): −'+c.v}));
   }
@@ -401,7 +401,10 @@ function renderGame(){
     else if(V.sel!=null){const ci=me.hand.findIndex(c=>c.id===V.sel);if(ci>=0)actions=cardActions(g,me,ci).map((a,i)=>a.k?`<button class="${a.soft?'':'go'}" data-act="${i}">${esc(a.label)}</button>`:`<span class="why">${esc(a.no)}</span>`).join('')}
     else{const canPlay=anyLegal(g,me),canSwap=true;
       let tip;
-      if(!canPlay)tip='אין קלף שאפשר להניח. לחץ/י על קלף שלא צריך ובחר/י "החלף בקלף מהקופה".';
+      const HT={fuel:'אזל הדלק: אין מאך ואין מכפיל עד מטוס תדלוק. פיט עדיין אפשר.',ice:'קרח: אין פיט ואין מכפיל עד אנטי-אייס.',vertigo:'ורטיגו: כולם יכולים להוריד לך פיט עד מד אופק.'};
+      const hz=me.haz.map(x=>HT[x]).filter(Boolean),hasFix=me.hand.some(c=>TYPES[c.t].solves&&me.haz.includes(TYPES[c.t].solves));
+      if(hz.length)tip=hz.join(' ')+(hasFix?' יש לך פתרון ביד: לחץ/י עליו.':' אין לך פתרון? החלף/י קלף, או קמיקאזה.');
+      else if(!canPlay)tip='אין קלף שאפשר להניח. לחץ/י על קלף שלא צריך ובחר/י "החלף בקלף מהקופה".';
       else if(!me.mach.length)tip=me.haz.includes('fuel')?'אזל לך הדלק: קודם מטוס תדלוק, ואז מאך.':'קודם מאך כדי להמריא. אין מאך? החלף/י קלף בקלף מהקופה.';
       else tip='קלף שמואר אפשר לשחק עכשיו. לחץ/י עליו.';
       actions=`<span class="tipline">${esc(tip)}</span><button id="kami">💥 קמיקאזה: 5 קלפים חדשים${me.mach.length?', מאבדים מאך':''}</button>`;}
