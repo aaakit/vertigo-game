@@ -155,6 +155,7 @@ function cardActions(s,p,ci){
     if(p.mach.length>=2)out.push({no:'כבר יש לך 2 מאך'});
     else if(stopped(p,'mach'))out.push({no:'אזל לך הדלק: אי אפשר להוסיף מאך'});
     else out.push({k:'mach',label:'הנח אצלי: מאך'});
+    p.hand.forEach((f,fi)=>{if(f.t==='feet'&&cardActions(s,p,fi).some(a=>a.k==='boost'))out.push({k:'boostm',feet:f.id,label:'מכפיל: '+f.v+' → '+(2*f.v)+' פיט'})});
   }
   if(HAZ.includes(c.t))opp.forEach(o=>out.push(o.haz.includes(c.t)?{no:o.name+' כבר עם '+T.name}:{k:'haz',to:o.id,label:'תן ל'+o.name}));
   if(T.solves)out.push(p.haz.includes(T.solves)?{k:'fix',label:'פתור: '+TYPES[T.solves].name}:{no:'אין עליך '+TYPES[T.solves].name});
@@ -171,6 +172,7 @@ function act(s,pid,a){
     for(let i=0;i<5;i++)draw(s,p);s.last={seq:s.seq+1,by:p.id,k:'kamikaze'};
     s.log.unshift('💥 '+p.name+' עשה/תה קמיקאזה: 5 קלפים חדשים'+(lost?', ואיבד/ה מאך ('+p.mach.length+'/2).':'.'));return endTurn(s);
   }
+  if(a.k==='boostm'){const m=p.hand.find(c=>c.id===a.card);if(!m||m.t!=='mach')return 'קלף לא נמצא';a={k:'boost',card:a.feet}} // multiplier chosen from the mach card
   const ci=p.hand.findIndex(c=>c.id===a.card);if(ci<0)return 'קלף לא נמצא';
   const ok=cardActions(s,p,ci).find(x=>x.k===a.k&&(x.to||null)===(a.to||null));if(!ok)return 'מהלך לא חוקי';
   const c=p.hand.splice(ci,1)[0];const o=a.to?s.players[pIdx(s,a.to)]:null;
@@ -297,12 +299,12 @@ const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const $=s=>document.querySelector(s);
 function img(c){return c.t==='feet'?'feet'+c.v:TYPES[c.t].img}
 // "can I play this card?" label on each card in the hand (Avraham, 23.11.2026)
-const SHORT=[[/^אין עליך/,'אין עליך תקלה כזו'],[/צריך מאך/,'צריך מאך קודם'],[/קרח/,'קרח עליך'],[/שני מאך/,'מעל 2,000: צריך 2 מאך'],[/כבר יש לך 2/,'יש כבר 2 מאך'],[/הדלק/,'אין דלק'],[/^אין עליך/,'אין עליך תקלה כזו'],[/כבר עם/,'כבר יש לו']];
+const SHORT=[[/^אין עליך/,'אין תקלה'],[/צריך מאך/,'צריך מאך'],[/קרח/,'קרח'],[/שני מאך/,'צריך 2 מאך'],[/כבר יש לך 2/,'יש 2 מאך'],[/הדלק/,'אין דלק'],[/כבר עם/,'כבר יש לו']];
 function cardTag(g,p,ci){
   const acts=cardActions(g,p,ci);
-  if(acts.some(a=>a.k&&!a.soft))return '<span class="ctag ok">✓ אפשר</span>';
-  const no=(acts.find(a=>a.no)||{}).no||'';const s=(SHORT.find(([r])=>r.test(no))||[0,'אין יריב מתאים'])[1];
-  return '<span class="ctag no">✗ '+esc(s)+'</span>';
+  if(acts.some(a=>a.k&&!a.soft))return '';
+  const no=(acts.find(a=>a.no)||{}).no||'';const s=(SHORT.find(([r])=>r.test(no))||[0,'אין יריב'])[1];
+  return '<span class="ctag no">'+esc(s)+'</span>';
 }
 const withTag=(html,tag)=>tag?html.replace(/<\/button>\s*$/,tag+'</button>'):html;
 function cardHTML(c,extra='',style=''){
@@ -407,15 +409,15 @@ function renderGame(){
   let actions='';
   if(myTurn&&me){
     if(V.kamiOn)actions=`<span class="note">קמיקאזה: בחרו 2 קלפים (${V.kami.length}/2)</span><button class="go" id="kgo" ${V.kami.length===2?'':'disabled'}>זרוק שניים, קח אחד</button><button id="kcancel">ביטול</button>`;
-    else if(V.sel!=null){const ci=me.hand.findIndex(c=>c.id===V.sel);if(ci>=0)actions=cardActions(g,me,ci).map((a,i)=>a.k?`<button class="${a.soft?'':'go'}" data-act="${i}">${esc(a.label)}</button>`:`<span class="why">${esc(a.no)}</span>`).join('')}
+    else if(V.sel!=null){const ci=me.hand.findIndex(c=>c.id===V.sel);if(ci>=0){const al=cardActions(g,me,ci),real=al.some(a=>a.k&&!a.soft);actions=al.map((a,i)=>a.k?`<button class="${a.soft?'':'go'}" data-act="${i}">${esc(a.label)}</button>`:real?'':`<span class="why">${esc(a.no)}</span>`).join('')}}
     else{const canPlay=anyLegal(g,me),canSwap=true;
       let tip;
-      const HT={fuel:'אזל הדלק: אין מאך ואין מכפיל עד מטוס תדלוק. פיט עדיין אפשר.',ice:'קרח: אין פיט ואין מכפיל עד אנטי-אייס.',vertigo:'ורטיגו: כולם יכולים להוריד לך פיט עד מד אופק.'};
+      const HT={fuel:'אין דלק: צריך מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
       const hz=me.haz.map(x=>HT[x]).filter(Boolean),hasFix=me.hand.some(c=>TYPES[c.t].solves&&me.haz.includes(TYPES[c.t].solves));
-      if(hz.length)tip=hz.join(' ')+(hasFix?' יש לך פתרון ביד: לחץ/י עליו.':' אין לך פתרון? החלף/י קלף, או קמיקאזה.');
-      else if(!canPlay)tip='אין קלף שאפשר להניח. לחץ/י על קלף שלא צריך ובחר/י "החלף בקלף מהקופה".';
-      else if(!me.mach.length)tip=me.haz.includes('fuel')?'אזל לך הדלק: קודם מטוס תדלוק, ואז מאך.':'קודם מאך כדי להמריא. אין מאך? החלף/י קלף בקלף מהקופה.';
-      else tip='קלף שמואר אפשר לשחק עכשיו. לחץ/י עליו.';
+      if(hz.length)tip=hz.join(' ')+(hasFix?'':' אין? החלף קלף או קמיקאזה.');
+      else if(!canPlay)tip='אין מהלך: החלף קלף או קמיקאזה.';
+      else if(!me.mach.length)tip='קודם מאך כדי להמריא.';
+      else tip='בחר קלף.';
       actions=`<span class="tipline">${esc(tip)}</span><button id="kami">💥 קמיקאזה: 5 קלפים חדשים${me.mach.length?', מאבדים מאך':''}</button>`;}
   }
   const others=g.players.filter(p=>p.id!==myId()).map((p,i)=>board(g,p,false,i)).join('');
@@ -460,7 +462,7 @@ function bind(){
   document.querySelectorAll('.hand [data-card]').forEach(el=>el.onclick=()=>{const id=+el.dataset.card;V.err='';
     if(V.kamiOn){V.kami=V.kami.includes(id)?V.kami.filter(x=>x!==id):V.kami.length<2?[...V.kami,id]:V.kami;return render()}
     V.sel=V.sel===id?null:id;render()});
-  document.querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>{const g=V.game,me=g.players.find(p=>p.id===myId()),ci=me.hand.findIndex(c=>c.id===V.sel);const a=cardActions(g,me,ci)[+el.dataset.act];doAction({k:a.k,card:V.sel,to:a.to||null})});
+  document.querySelectorAll('[data-act]').forEach(el=>el.onclick=()=>{const g=V.game,me=g.players.find(p=>p.id===myId()),ci=me.hand.findIndex(c=>c.id===V.sel);const a=cardActions(g,me,ci)[+el.dataset.act];doAction({k:a.k,card:V.sel,to:a.to||null,feet:a.feet})});
 }
 render();
 
