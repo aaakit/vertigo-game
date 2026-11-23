@@ -103,6 +103,15 @@ input,select{font:inherit;background:#0c241b;color:var(--ink);border:1px solid v
 .slot.vtg::after{background:#7a4fd0}
 .slot.blk .mini-empty,.slot.blk .fc,.slot.blk .mini-card{opacity:.55}
 .ceil{display:block;font-size:10px;color:var(--glow);font-weight:700}
+.lanes{display:flex;flex-direction:column;gap:6px}
+.lane{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid transparent}
+.lane .ln{width:46px;flex:none;font-size:12px;font-weight:800;color:var(--dim)}
+.lane .lhaz{margin-inline-start:auto;display:flex;gap:6px;align-items:center;padding-inline-start:8px;border-inline-start:1px dashed var(--rim)}
+.lane .lhaz .mini-empty{opacity:.4;font-size:9px;border-color:var(--hazard);color:#ff9a9d}
+.lane.blk{background:rgba(229,72,77,.13);border-color:var(--hazard)}
+.lane.blk .slot>*{opacity:.5}
+.lane.vtg{background:rgba(122,79,208,.15);border:1px dashed #b48cff}
+.lane.blk .ln{color:#ff9a9d}.lane.vtg .ln{color:#cdb4ff}
 .card.dim>*:not(.ctag){filter:grayscale(.85) brightness(.55)}.ctag{position:absolute;left:0;right:0;bottom:0;z-index:3;font-size:11px;line-height:1.25;font-weight:800;padding:3px 2px;text-align:center;background:rgba(0,0,0,.8)}.ctag.ok{color:#7be3a4}.ctag.no{color:#ff9a9d}
 </style>
 </head><body><div class="wrap" id="app"></div>
@@ -403,14 +412,16 @@ function board(g,p,mine,i){
   const cur=g.players[g.turn],tot=alt(p);
   const fuel=p.haz.includes('fuel'),ice=p.haz.includes('ice'),vtg=p.haz.includes('vertigo');
   const ceil=!p.mach.length?'על הקרקע':p.mach.length===1?'תקרה 2,000':'בלי תקרה';
+  const hz=t=>p.haz.includes(t)?`<div class="mini-card hz" style="--c:#e5484d"><img src="${IMG[TYPES[t].img]}" alt=""><span>${TYPES[t].name}</span></div>`:`<div class="mini-empty">${{fuel:'דלק',ice:'קרח',vertigo:'ורטיגו'}[t]}</div>`;
   const fTag=[ice?'❄ קרח: אין פיט':'',vtg?'⬇ ורטיגו':''].filter(Boolean).join(' · ');
   const feet=p.feet.map(f=>`<div class="fc ${f.eff<0?'neg':''}">${f.eff<0?'−':''}${Math.abs(f.eff)}</div>`).join('');
   return `<div class="board ${mine?'mine':''} ${p.id===cur.id&&g.status==='play'?'turn':''} ${p.out?'out':''}" data-pid="${esc(p.id)}">
     <div class="bh"><b>${esc(p.name)}</b><span class="muted">${p.out?esc(p.why):p.hand.length+' קלפים ביד'}</span></div>
-    <div class="brow">
-      <div class="slot mach ${fuel?'blk':''}" data-blk="⛽ הדלק אוזל: אין מאך">${[0,1].map(k=>p.mach[k]?`<div class="mini-card" style="--c:#9b5cf0"><img src="${IMG.mach}" alt=""><span>מאך</span></div>`:`<div class="mini-empty">${k?'מאך 2<br>מעל 2,000':'מאך 1<br>המראה'}</div>`).join('')}</div>
-      <div class="slot feet ${ice?'blk':vtg?'vtg':''}" data-blk="${fTag}"><div class="fstack">${feet||`<div class="mini-empty wide">${p.mach.length?'פיט':'פיט אחרי המראה'}</div>`}</div><div class="tot"><b>${fmt(tot)}</b><small>/ ${fmt(g.target)}</small><span class="ceil">${ceil}</span></div></div>
-      <div class="slot haz">${p.haz.map(h=>`<div class="mini-card hz" style="--c:#e5484d"><img src="${IMG[TYPES[h].img]}" alt=""><span>${TYPES[h].name}</span></div>`).join('')}</div>
+    <div class="lanes">
+      <div class="lane ${fuel?'blk':''}"><span class="ln">מהירות</span><div class="slot mach">${[0,1].map(k=>p.mach[k]?`<div class="mini-card" style="--c:#9b5cf0"><img src="${IMG.mach}" alt=""><span>מאך</span></div>`:`<div class="mini-empty">${k?'מאך 2<br>מעל 2,000':'מאך 1<br>המראה'}</div>`).join('')}</div>
+        <div class="lhaz">${hz('fuel')}</div></div>
+      <div class="lane ${ice?'blk':vtg?'vtg':''}"><span class="ln">גובה</span><div class="slot feet"><div class="fstack">${feet||`<div class="mini-empty wide">${p.mach.length?'פיט':'פיט אחרי המראה'}</div>`}</div><div class="tot"><b>${fmt(tot)}</b><small>/ ${fmt(g.target)}</small><span class="ceil">${ceil}</span></div></div>
+        <div class="lhaz">${hz('ice')}${hz('vertigo')}</div></div>
     </div>
     <div class="pbar"><i style="width:${Math.min(100,tot/g.target*100)}%"></i></div>
   </div>`;
