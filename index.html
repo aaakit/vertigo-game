@@ -107,7 +107,7 @@ const TYPES={
   feet:{name:'פיט',kind:'גובה',c:'#3d7bf0'},
   mach:{name:'מאך',kind:'מהירות',c:'#9b5cf0',img:'mach'},
   vertigo:{name:'ורטיגו',kind:'תקלה',c:'#e5484d',img:'vertigo',fix:'horizon'},
-  fuel:{name:'אזל הדלק',kind:'תקלה',c:'#e5484d',img:'fuel_empty',fix:'refuel',stops:'mach'},
+  fuel:{name:'הדלק אוזל',kind:'תקלה',c:'#e5484d',img:'fuel_empty',fix:'refuel',stops:'mach'},
   ice:{name:'קרח על הכנפיים',kind:'תקלה',c:'#e5484d',img:'ice',fix:'antiice',stops:'feet'},
   horizon:{name:'מד אופק',kind:'פתרון',c:'#2fb36b',img:'horizon',solves:'vertigo'},
   refuel:{name:'מטוס תדלוק',kind:'פתרון',c:'#2fb36b',img:'refuel',solves:'fuel'},
@@ -153,7 +153,7 @@ function cardActions(s,p,ci){
   }
   if(c.t==='mach'){
     if(p.mach.length>=2)out.push({no:'כבר יש לך 2 מאך'});
-    else if(stopped(p,'mach'))out.push({no:'אזל לך הדלק: אי אפשר להוסיף מאך'});
+    else if(stopped(p,'mach'))out.push({no:'הדלק שלך אוזל: אי אפשר להוסיף מאך'});
     else out.push({k:'mach',label:'הנח אצלי: מאך'});
     p.hand.forEach((f,fi)=>{if(f.t==='feet'&&cardActions(s,p,fi).some(a=>a.k==='boost'))out.push({k:'boostm',feet:f.id,label:'מכפיל: '+f.v+' → '+(2*f.v)+' פיט'})});
   }
@@ -299,7 +299,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const $=s=>document.querySelector(s);
 function img(c){return c.t==='feet'?'feet'+c.v:TYPES[c.t].img}
 // "can I play this card?" label on each card in the hand (Avraham, 23.11.2026)
-const SHORT=[[/^אין עליך/,'אין תקלה'],[/צריך מאך/,'צריך מאך'],[/קרח/,'קרח'],[/שני מאך/,'צריך 2 מאך'],[/כבר יש לך 2/,'יש 2 מאך'],[/הדלק/,'אין דלק'],[/כבר עם/,'כבר יש לו']];
+const SHORT=[[/^אין עליך/,'אין תקלה'],[/צריך מאך/,'צריך מאך'],[/קרח/,'קרח'],[/שני מאך/,'צריך 2 מאך'],[/כבר יש לך 2/,'יש 2 מאך'],[/הדלק/,'דלק אוזל'],[/כבר עם/,'כבר יש לו']];
 function cardTag(g,p,ci){
   const acts=cardActions(g,p,ci);
   if(acts.some(a=>a.k&&!a.soft))return '';
@@ -320,16 +320,16 @@ function rulesHTML(){
     <section><div><h3>הקלפים (77)</h3><table class="ctab"><tr><th>קלף</th><th>כמה</th><th>מה עושה</th></tr>
       <tr><td>פיט 50–500</td><td>35</td><td>מעלה אותך בגובה</td></tr>
       <tr><td>מאך</td><td>10</td><td>מהירות. צריך 1 להמראה, 2 לנצחון. או מכפיל לפיט</td></tr>
-      <tr><td>אזל הדלק</td><td>5</td><td>ליריב: לא יכול להניח מאך</td></tr>
+      <tr><td>הדלק אוזל</td><td>5</td><td>ליריב: לא יכול להניח מאך</td></tr>
       <tr><td>קרח על הכנפיים</td><td>5</td><td>ליריב: לא יכול להניח פיט</td></tr>
       <tr><td>ורטיגו</td><td>6</td><td>ליריב: כולם יכולים להוריד לו פיט</td></tr>
-      <tr><td>מטוס תדלוק</td><td>5</td><td>פותר אזל הדלק</td></tr>
+      <tr><td>מטוס תדלוק</td><td>5</td><td>פותר הדלק אוזל</td></tr>
       <tr><td>אנטי-אייס</td><td>5</td><td>פותר קרח</td></tr>
       <tr><td>מד אופק</td><td>6</td><td>פותר ורטיגו</td></tr></table>
       <p class="muted">אין קלף טוב? כל קלף אפשר להחליף בקלף מהקופה.</p></div></section>
     <section><div><h3>בכל תור, אחד מאלה</h3><ul>
       <li>להניח אצלך קלף <b>מאך</b> או <b>פיט</b>. בלי מאך אין המראה. מעל 2,000 פיט צריך שני מאך.</li>
-      <li>לתת ליריב <b>תקלה</b>: אזל הדלק (לא יכול להניח מאך), קרח על הכנפיים (לא יכול להניח פיט), ורטיגו.</li>
+      <li>לתת ליריב <b>תקלה</b>: הדלק אוזל (לא יכול להניח מאך), קרח על הכנפיים (לא יכול להניח פיט), ורטיגו.</li>
       <li>לפתור תקלה שיש עליך: מטוס תדלוק, אנטי-אייס, מד אופק.</li></ul><p class="muted">אחרי כל מהלך לוקחים קלף מהקופה.</p></div></section>
     <section><div><h3>ורטיגו</h3><p>כל עוד יריב בורטיגו, שאר השחקנים בתורם יכולים להניח קלפי פיט <b>על הערימה שלו</b>, וכל קלף כזה מוריד לו פיט. יוצאים עם מד אופק.</p></div></section>
     <section><div><h3>החלפת קלפים (שונה 23.11)</h3><p>אין קלף טוב? בכל שלב אפשר להחליף <b>כל קלף</b> בקלף מהקופה. זה התור שלך. (במקום החלפת פיט וקמיקאזה, כמו בגרסה של שושי.)</p></div></section>
@@ -412,7 +412,7 @@ function renderGame(){
     else if(V.sel!=null){const ci=me.hand.findIndex(c=>c.id===V.sel);if(ci>=0){const al=cardActions(g,me,ci),real=al.some(a=>a.k&&!a.soft);actions=al.map((a,i)=>a.k?`<button class="${a.soft?'':'go'}" data-act="${i}">${esc(a.label)}</button>`:real?'':`<span class="why">${esc(a.no)}</span>`).join('')}}
     else{const canPlay=anyLegal(g,me),canSwap=true;
       let tip;
-      const HT={fuel:'אין דלק: צריך מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
+      const HT={fuel:me.mach.length?'הדלק אוזל: אין מאך חדש עד מטוס תדלוק. פיט אפשר.':'הדלק אוזל ואין מאך: אי אפשר להמריא עד מטוס תדלוק.',ice:'קרח: צריך אנטי-אייס.',vertigo:'ורטיגו: צריך מד אופק.'};
       const hz=me.haz.map(x=>HT[x]).filter(Boolean),hasFix=me.hand.some(c=>TYPES[c.t].solves&&me.haz.includes(TYPES[c.t].solves));
       if(hz.length)tip=hz.join(' ')+(hasFix?'':' אין? החלף קלף או קמיקאזה.');
       else if(!canPlay)tip='אין מהלך: החלף קלף או קמיקאזה.';
