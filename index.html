@@ -316,17 +316,37 @@ function rulesHTML(){
     <section><div><h3>מה השלמתי (לא כתוב בחוקים)</h3><ul class="muted"><li>קרח ואנטי-אייס במקום "מנוע בוער" ו"מטוס ממריא", כמו בסט שהודפס.</li><li>יעד לבחירה. 4,000 כתוב בחוקים, אבל בכל החבילה יש 6,600 פיט.</li><li>כשהקופה נגמרת, מערבבים את הזרוקים.</li><li>אפשר לשחק גם בשניים.</li></ul></div></section>
     <button class="go" id="gclose2" style="width:100%">סגור</button></div></div>`;
 }
+
+// ================= "הערה לתיקון": a note for Avraham on WhatsApp, with the game state attached =================
+function gameSnapshot(){
+  const g=V.game;if(!g)return 'מסך: '+V.screen;
+  const P=g.players.map(p=>p.name+': גובה '+alt(p)+', מאך '+p.mach.length+(p.haz.length?', תקלות '+p.haz.map(h=>TYPES[h].name).join('+'):'')+(p.out?' (בחוץ)':'')).join(' | ');
+  const me=g.players.find(p=>p.id===myId());
+  const hand=me?me.hand.map(c=>TYPES[c.t].name+(c.v?' '+c.v:'')).join(', '):'';
+  return 'מצב: '+(V.mode||'')+' · יעד '+g.target+' · תור של '+g.players[g.turn].name+'\n'+P+(hand?'\nביד: '+hand:'')+'\nאחרונים: '+g.log.slice(0,4).join(' / ');
+}
+function feedbackHTML(){
+  return `<div class="guide" role="dialog" aria-label="הערה לתיקון"><div class="gwrap">
+    <div class="row" style="justify-content:space-between"><h2>הערה לתיקון</h2><button class="icon-btn" id="fbclose">✕</button></div>
+    <section><p>מה לא עבד, או מה כדאי לשנות? כתבו במילים שלכם. מצב המשחק ברגע הזה מצורף אוטומטית.</p>
+      <textarea id="fbtext" rows="5" style="width:100%;font:inherit;background:#0c241b;color:var(--ink);border:1px solid var(--rim);border-radius:10px;padding:10px" placeholder="למשל: הנחתי מאך שני ולא קרה כלום">${esc(V.fbText||'')}</textarea>
+      <details style="margin-top:8px"><summary class="muted">מה מצורף</summary><pre style="white-space:pre-wrap;font-size:12px;color:var(--dim)">${esc(gameSnapshot())}</pre></details></section>
+    <a class="btn go" id="fbsend" href="#" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;padding:12px;border-radius:10px;display:block">שלח בוואטסאפ</a>
+    <p class="muted note" style="text-align:center;margin:0">ייפתח וואטסאפ עם ההודעה מוכנה. בוחרים את אברהם ושולחים.</p></div></div>`;
+}
+function fbLink(){return 'https://wa.me/?text='+encodeURIComponent('ורטיגו · הערה לתיקון:\n'+(V.fbText||'')+'\n\n---\n'+gameSnapshot())}
+
 function render(){
   const app=$('#app');let h='';
   if(V.screen==='home')h=renderHome();else if(V.screen==='room')h=renderRoom();else h=renderGame();
-  app.innerHTML=h+(V.guide?rulesHTML():'');bind();afterRender();
+  app.innerHTML=h+(V.guide?rulesHTML():'')+(V.fb?feedbackHTML():'');bind();afterRender();
 }
 function targetSel(id){return `<select id="${id}" aria-label="יעד">${[2000,3000,4000].map(t=>`<option value="${t}" ${t===V.target?'selected':''}>יעד ${fmt(t)}${t===4000?' (כמו בחוקים)':''}</option>`).join('')}</select>`}
 function renderHome(){
   const fan=[{t:'feet',v:500},{t:'mach'},{t:'vertigo'},{t:'horizon'},{t:'ice'}];
   return `<div class="hero"><div class="tag">Swing · 2016</div><h1>ורטיגו</h1><p>משחק קלפים: להגיע ראשון לגובה ול-2 מאך.</p>
     <div class="fan">${fan.map((c,i)=>cardHTML({...c,id:-1},'','animation-delay:'+(i*.08)+'s;transform:rotate('+((i-2)*9)+'deg) translateY('+(Math.abs(i-2)*8)+'px)')).join('')}</div>
-    <div class="row" style="justify-content:center;margin-top:8px"><button class="go" id="bot">שחק נגד המחשב</button><button id="rules">החוקים</button></div></div>
+    <div class="row" style="justify-content:center;margin-top:8px"><button class="go" id="bot">שחק נגד המחשב</button><button id="rules">החוקים</button><button id="fb">💬 הערה לתיקון</button></div></div>
   <div class="box row"><label for="nm">השם שלך</label><input id="nm" value="${esc(myName)}" maxlength="14" placeholder="למשל: אריה" style="flex:1">${targetSel('tsel')}</div>
   <div class="home-grid">
 ${V.noDb?'':`    <div class="box"><h3>משחק ברשת</h3><button class="go" id="create" ${V.busy?'disabled':''}>פתח משחק</button></div>
@@ -377,7 +397,7 @@ function renderGame(){
   const others=g.players.filter(p=>p.id!==myId()).map((p,i)=>board(g,p,false,i)).join('');
   const over=g.status==='over'?`<div class="box banner"><h2>${g.winner?esc(nameOf(g,g.winner))+' ניצח/ה':'אין מנצח'}</h2><p>${esc(g.endWhy)}</p><div class="row" style="justify-content:center">${V.mode!=='online'||(V.room&&V.room.host===ME)?'<button class="go" id="again">עוד משחק</button>':''}<button id="home">לתפריט</button></div></div>`:'';
   const top=g.discard[g.discard.length-1];
-  return `<div class="top"><h2>ורטיגו</h2><div class="row" style="gap:6px">${V.mode==='online'?'<b style="font-family:var(--digits);color:var(--glow)">'+esc(V.code)+'</b>':''}<button class="icon-btn" id="rules">החוקים</button><button class="icon-btn" id="mute">${V.muted?'🔇':'🔊'}</button>${V.mode!=='online'?'<button class="icon-btn" id="home">✕</button>':''}</div></div>
+  return `<div class="top"><h2>ורטיגו</h2><div class="row" style="gap:6px">${V.mode==='online'?'<b style="font-family:var(--digits);color:var(--glow)">'+esc(V.code)+'</b>':''}<button class="icon-btn" id="fb">💬 הערה לתיקון</button><button class="icon-btn" id="rules">החוקים</button><button class="icon-btn" id="mute">${V.muted?'🔇':'🔊'}</button>${V.mode!=='online'?'<button class="icon-btn" id="home">✕</button>':''}</div></div>
    ${over}
    <div class="table">
      ${others}
@@ -403,7 +423,9 @@ function bind(){
   const ts=$('#tsel');if(ts)ts.onchange=()=>{V.target=+ts.value;LS.set('vtg_target',ts.value)};
   on('create',createRoom);on('join',()=>joinRoom($('#jcode').value));on('bot',startBot);
   on('local',()=>{const raw=$('#lnames').value;LS.set('vtg_local',raw);const names=raw.split(/[,،]/).map(s=>s.trim()).filter(Boolean);if(names.length<2||names.length>5){V.err='צריך 2 עד 5 שמות, עם פסיק';return render()}startLocal(names)});
-  on('rules',()=>{V.guide=true;render()});on('gclose',()=>{V.guide=false;render()});on('gclose2',()=>{V.guide=false;render()});
+  on('rules',()=>{V.guide=true;render()});
+  on('fb',()=>{V.fb=true;render()});on('fbclose',()=>{V.fb=false;render()});
+  const fbt=$('#fbtext'),fbs=$('#fbsend');if(fbt&&fbs){const upd=()=>{V.fbText=fbt.value;fbs.href=fbLink()};fbt.oninput=upd;upd();fbs.onclick=()=>{setTimeout(()=>{V.fb=false;V.fbText='';render()},400)}}on('gclose',()=>{V.guide=false;render()});on('gclose2',()=>{V.guide=false;render()});
   on('home',()=>{clearTimeout(V.botT);if(V.unsub)V.unsub();V.unsub=null;Object.assign(V,{screen:'home',mode:null,code:'',room:null,game:null});resetView();render()});
   on('copy',()=>{try{navigator.clipboard.writeText(V.code)}catch(e){}});
   on('start',()=>{resetView();const g=startGame(V.room.players,V.room.target||V.target);V.game=g;writeGame(g)});
